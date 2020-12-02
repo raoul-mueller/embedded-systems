@@ -1,0 +1,13 @@
+Prefix: /api/v1/
+
+Endpoints:
+
+/auth/register
+/auth/login
+
+/users/me
+/users/$id/devices
+
+/events?device=&type=&start=&end=
+
+/standings?challenge=
