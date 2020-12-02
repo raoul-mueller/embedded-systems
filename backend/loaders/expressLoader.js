@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const routes = require('../api');
+const config = require('../config');
 
 module.exports = async () => {
     const app = express();
@@ -12,9 +13,9 @@ module.exports = async () => {
 
     app.use(cors());
     app.use(bodyParser.json());
-    app.use('/api/v1', routes());
+    app.use(config.expressApiPrefix, routes());
 
-    app.listen(9001, () => {
-        console.log('Listening on 9001');
+    app.listen(config.expressPort, () => {
+        console.log(`Listening on ${config.expressPort}`);
     });
 };
