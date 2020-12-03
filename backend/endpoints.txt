@@ -3,11 +3,68 @@ Prefix: /api/v1/
 Endpoints:
 
 /auth/register
-/auth/login
 
-/users/me
-/users/$id/devices
+Punkte/Event Log pro stunde und täglich (2 Tage)
+        
+on event:
 
-/events?device=&type=&start=&end=
+score per hour (entity) //if not found, create for hour (timestamps e.g. 10:00 - 10:59)
+calc score added
+if (last hour after or eq 00:00) {
+    add score last hour
+}
+update every metric (steps, standing/outside mins)
+broadcast standings
 
-/standings?challenge=
+broadcast standings:
+
+users = users.all
+for user in users:
+    scoresYesterday = user.scores(00:00 - 25:59 (-1d))
+    scoresToday = user.scores(00:00 - now)
+    sumScoresYesterday = sum(scoresYesterday)
+    sumScoresToday = sum(scoresToday)
+
+{
+    standings: [ //sorted by score (desc)
+        {
+            user: {},
+            score: {
+                current: 100,
+                lastDay: 1000,
+                hourly: [
+                    0,
+                    100,
+                    ...
+                ]
+            },
+            steps: {
+                current: 100,
+                lastDay: 500,
+                hourly: [
+                    0,
+                    50,
+                    ...
+                ]
+            },
+            standing: {
+                current: 10,
+                lastDay: 30,
+                hourly: [
+                    0,
+                    5,
+                    ...
+                ]
+            },
+            outside: {
+                current: 10,
+                lastDay: 30,
+                hourly: [
+                    0,
+                    5,
+                    ...
+                ]
+            }
+        }
+    ]
+}
