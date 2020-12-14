@@ -2,13 +2,14 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const scoreEntry = new Schema({
-    _id: Schema.Types.ObjectId,
     user: { type: Schema.Types.ObjectId, ref: 'User' },
-    start: String,
-    end: String,
+    start: Date,
+    end: Date,
     score: Number,
-    lastStanding: Boolean,
-    lastOutside: Boolean
+    steps: Number,
+    standingMinutes: Number,
+    outsideMinutes: Number,
+    lastUpdate: Date
 });
 
 module.exports = mongoose.model('ScoreEntry', scoreEntry);
