@@ -30,8 +30,8 @@ class StadingsService {
 
             let scoresToday = await scoreEntryModel.find({
                 user: user._id,
-                start: { $gte: todayBegin.toMillis() },
-                end: { $lte: todayEnd.toMillis() }
+                start: { $gte: todayBegin },
+                end: { $lte: todayEnd }
             }).exec();
 
             for (const score of scoresToday) {
@@ -42,8 +42,8 @@ class StadingsService {
 
             let scoresYesterday = await scoreEntryModel.find({
                 user: user._id,
-                start: { $gte: yesterdayBegin.toMillis() },
-                end: { $lte: todayBegin.toMillis() }
+                start: { $gte: yesterdayBegin },
+                end: { $lte: todayBegin }
             }).exec();
 
             for (const score of scoresYesterday) {
@@ -59,16 +59,20 @@ class StadingsService {
     }
 
     addScoreToStanding(score, standing, day = 'today') {
-        standing.score[day === 'today' ? 'current' : 'lastDay'] = score.score;
+        let current = standing.score[day === 'today' ? 'current' : 'lastDay'];
+        standing.score[day === 'today' ? 'current' : 'lastDay'] = Math.max(current, score.score);
         standing.score.hourly[day].push(score.score);
 
-        standing.steps[day === 'today' ? 'current' : 'lastDay'] = score.steps;
+        current = standing.steps[day === 'today' ? 'current' : 'lastDay'];
+        standing.steps[day === 'today' ? 'current' : 'lastDay'] = Math.max(current, score.steps);
         standing.steps.hourly[day].push(score.steps);
 
-        standing.standing[day === 'today' ? 'current' : 'lastDay'] = score.standingMinutes;
+        current = standing.standing[day === 'today' ? 'current' : 'lastDay'];
+        standing.standing[day === 'today' ? 'current' : 'lastDay'] = Math.max(current, score.standingMinutes);
         standing.standing.hourly[day].push(score.standingMinutes);
 
-        standing.outside[day === 'today' ? 'current' : 'lastDay'] = score.outsideMinutes;
+        current = standing.outside[day === 'today' ? 'current' : 'lastDay'];
+        standing.outside[day === 'today' ? 'current' : 'lastDay'] = Math.max(current, score.outsideMinutes);
         standing.outside.hourly[day].push(score.outsideMinutes);
     }
 

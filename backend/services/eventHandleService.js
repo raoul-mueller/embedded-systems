@@ -19,7 +19,7 @@ class EventHandleService {
             await this.handleEvent(message);
 
             let standings = await this.stadingsService.generateStandings();
-            //console.log(util.inspect(standings, false, null, true));
+            console.log(util.inspect(standings, false, null, true));
 
             wss.clients.forEach((client) => {
                 if (client.readyState === WebSocket.OPEN) {
@@ -61,34 +61,33 @@ class EventHandleService {
         //fetch current scoreEntry
         let scoreEntry = await scoreEntryModel.findOne({
             user: user._id,
-            start: { $lte: now.toMillis() },
-            end: { $gte: now.toMillis() }
+            start: { $lte: now },
+            end: { $gte: now }
         }).exec();
 
         if (!scoreEntry) {
             //create new entry if not found
             let hourBegin = DateTime.utc().startOf('hour');
             let hourEnd = DateTime.utc().endOf('hour');
-            let prevHourBegin = hourBegin.minus({ hours: 1 });
 
-            let prevScoreEntry = null;
-            if (prevHourBegin.day === hourBegin.day) {
-                prevScoreEntry = await scoreEntryModel.findOne({
-                    user: user._id,
-                    start: { $gte: prevHourBegin.toMillis() },
-                    end: { $lte: hourBegin.toMillis() }
-                }).exec();
+            let prevScoreEntry = await scoreEntryModel.findOne({
+                user: user._id,
+            }).sort('-start').exec();
+
+            let prevScoreBegin = DateTime.fromMillis(prevScoreEntry.start.getTime()).toUTC();
+            if (prevScoreBegin.day !== hourBegin.day) {
+                prevScoreEntry = null;
             }
 
             const scoreEntryData = {
                 user: user._id,
-                start: hourBegin.toMillis(),
-                end: hourEnd.toMillis(),
+                start: hourBegin,
+                end: hourEnd,
                 score: prevScoreEntry ? prevScoreEntry.score : 0,
                 steps: prevScoreEntry ? prevScoreEntry.steps : 0,
                 standingMinutes: prevScoreEntry ? prevScoreEntry.standingMinutes : 0,
                 outsideMinutes: prevScoreEntry ? prevScoreEntry.outsideMinutes : 0, 
-                lastUpdate: prevScoreEntry ? prevScoreEntry.lastUpdate : now.toMillis()
+                lastUpdate: now
             };
             
             scoreEntry = new scoreEntryModel(scoreEntryData);
@@ -96,15 +95,13 @@ class EventHandleService {
         }
 
         //add standing/outside minutes
-        let lastUpdate = DateTime.fromMillis(scoreEntry.lastUpdate.getTime()).toUTC();
-        let minutesSinceLastUpdate = Interval.fromDateTimes(lastUpdate, now).length('minutes');
+        let lastUpdate = DateTime.fromJSDate(scoreEntry.lastUpdate).toUTC();
+        let minutesSinceLastUpdate = Number(Interval.fromDateTimes(lastUpdate, now).length('minutes')).toFixed(2);
         if (event.standing) {
             scoreEntry.standingMinutes += minutesSinceLastUpdate;
-            scoreEntry.standingMinutes = Number(scoreEntry.standingMinutes).toFixed(2);
         }
         if (event.outside) {
             scoreEntry.outsideMinutes += minutesSinceLastUpdate;
-            scoreEntry.outsideMinutes = Number(scoreEntry.outsideMinutes).toFixed(2);
         }
 
         //update entry
@@ -112,7 +109,7 @@ class EventHandleService {
         scoreEntry.lastUpdate = now.toMillis();
 
         //calc new score
-        const newScore = scoreEntry.steps * 0.5 + scoreEntry.standingMinutes + scoreEntry.outsideMinutes;
+        const newScore = scoreEntry.steps * 0.5 + (scoreEntry.standingMinutes * 2) + (scoreEntry.outsideMinutes * 2);
         scoreEntry.score = Math.ceil(newScore);
 
         await scoreEntry.save();
