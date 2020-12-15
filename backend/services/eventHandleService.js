@@ -96,12 +96,14 @@ class EventHandleService {
 
         //add standing/outside minutes
         let lastUpdate = DateTime.fromJSDate(scoreEntry.lastUpdate).toUTC();
-        let minutesSinceLastUpdate = Number(Interval.fromDateTimes(lastUpdate, now).length('minutes')).toFixed(2);
+        let minutesSinceLastUpdate = Interval.fromDateTimes(lastUpdate, now).length('minutes');
         if (event.standing) {
             scoreEntry.standingMinutes += minutesSinceLastUpdate;
+            scoreEntry.standingMinutes = Number(scoreEntry.standingMinutes).toFixed(2);
         }
         if (event.outside) {
             scoreEntry.outsideMinutes += minutesSinceLastUpdate;
+            scoreEntry.outsideMinutes = Number(scoreEntry.outsideMinutes).toFixed(2);
         }
 
         //update entry

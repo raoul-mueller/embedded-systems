@@ -37,8 +37,8 @@ class StadingsService {
             let userHighscoreChanged = false;
             for (const score of scoresToday) {
                 this.addScoreToStanding(score, standing);
-                if (score.score.current > user.highscore) {
-                    user.highscore = score.score.current;
+                if (score.score > (user.highscore || 0)) {
+                    user.highscore = score.score;
                     userHighscoreChanged = true;
                 }
             }
