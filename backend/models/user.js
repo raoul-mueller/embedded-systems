@@ -5,6 +5,7 @@ const user = new Schema({
     uuid: String,
     realname: String,
     pictureUrl: String,
+    highscore: Number,
     device: { type: Schema.Types.ObjectId, ref: 'Device' }
 });
 

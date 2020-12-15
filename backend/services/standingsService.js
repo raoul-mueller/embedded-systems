@@ -34,8 +34,13 @@ class StadingsService {
                 end: { $lte: todayEnd }
             }).exec();
 
+            let userHighscoreChanged = false;
             for (const score of scoresToday) {
                 this.addScoreToStanding(score, standing);
+                if (score.score.current > user.highscore) {
+                    user.highscore = score.score.current;
+                    userHighscoreChanged = true;
+                }
             }
 
             let yesterdayBegin = DateTime.utc().minus({ days: 1 }).startOf('day');
@@ -51,6 +56,10 @@ class StadingsService {
             }
 
             standings.standings.push(standing);
+
+            if (userHighscoreChanged) {
+                await user.save();
+            }
         }
 
         standings.standings.sort((a, b) => a.score.current - b.score.current);
