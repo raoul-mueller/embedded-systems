@@ -1,28 +1,37 @@
 const deviceModel = require('../models/device');
 const userModel = require('../models/user');
 const scoreEntryModel = require('../models/scoreEntry');
+const StadingsService = require('./standingsService');
+const { DateTime, Interval } = require('luxon');
+const util = require('util');
 
 class EventHandleService {
+    constructor() {
+        this.stadingsService = new StadingsService();
+    }
+
     setup(mqtt, wss) {
         mqtt.on('message', async (topic, message) => {
             if (topic !== 'ES/WS20/gruppe7/events') {
                 return;
             }
 
-            let standings = await this.handleEvent(message);
-            if (standings !== {}) {
-                wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify(standings));
-                    }
-                });
-            }
+            await this.handleEvent(message);
+
+            let standings = await this.stadingsService.generateStandings();
+            //console.log(util.inspect(standings, false, null, true));
+
+            wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify(standings));
+                }
+            });
         });
     }
 
     async handleEvent(message) {
         if (!this.isJson(message)) {
-            return {};
+            return;
         }
 
         const event = JSON.parse(message);
@@ -34,7 +43,7 @@ class EventHandleService {
 
         if (!device) {
             console.log(`Device with board id ${event.boardID} not found`);
-            return {};
+            return;
         }
 
         //fetch user by device
@@ -44,69 +53,51 @@ class EventHandleService {
 
         if (!user) {
             console.log(`User for device ${device._id} not found`);
-            return {};
+            return;
         }
 
-        let now = new Date(),
-            nowMillis = now.getTime();
+        let now = DateTime.utc();
 
         //fetch current scoreEntry
         let scoreEntry = await scoreEntryModel.findOne({
             user: user._id,
-            start: { $lte: now },
-            end: { $gte: now }
+            start: { $lte: now.toMillis() },
+            end: { $gte: now.toMillis() }
         }).exec();
 
         if (!scoreEntry) {
             //create new entry if not found
-            let hourBegin = new Date();
-            let hourEnd = new Date();
-            let prevHourBegin = new Date();
-    
-            hourBegin.setMinutes(0);
-            hourBegin.setSeconds(0);
-            hourBegin.setMilliseconds(0);
-    
-            let nextHour = hourBegin.getHours() + 1;
-            nextHour = nextHour > 23 ? 0 : nextHour;
-
-            hourEnd.setHours(nextHour);
-            hourEnd.setMinutes(0);
-            hourEnd.setSeconds(0);
-            hourEnd.setMilliseconds(0);
-
-            let prevHour = hourBegin.getHours() - 1;
+            let hourBegin = DateTime.utc().startOf('hour');
+            let hourEnd = DateTime.utc().endOf('hour');
+            let prevHourBegin = hourBegin.minus({ hours: 1 });
 
             let prevScoreEntry = null;
-            if (prevHour >= 0) {
-                prevHourBegin.setHours(prevHour);
-                prevHourBegin.setMinutes(0);
-                prevHourBegin.setSeconds(0);
-                prevHourBegin.setMilliseconds(0);
-
+            if (prevHourBegin.day === hourBegin.day) {
                 prevScoreEntry = await scoreEntryModel.findOne({
                     user: user._id,
-                    start: { $lte: prevHourBegin },
-                    end: { $gte: hourBegin }
+                    start: { $gte: prevHourBegin.toMillis() },
+                    end: { $lte: hourBegin.toMillis() }
                 }).exec();
             }
 
             const scoreEntryData = {
                 user: user._id,
-                start: hourBegin.getTime(),
-                end: hourEnd.getTime(),
+                start: hourBegin.toMillis(),
+                end: hourEnd.toMillis(),
                 score: prevScoreEntry ? prevScoreEntry.score : 0,
                 steps: prevScoreEntry ? prevScoreEntry.steps : 0,
                 standingMinutes: prevScoreEntry ? prevScoreEntry.standingMinutes : 0,
                 outsideMinutes: prevScoreEntry ? prevScoreEntry.outsideMinutes : 0, 
-                lastUpdate: prevScoreEntry ? prevScoreEntry.lastUpdate : now
+                lastUpdate: prevScoreEntry ? prevScoreEntry.lastUpdate : now.toMillis()
             };
+            
             scoreEntry = new scoreEntryModel(scoreEntryData);
             await scoreEntry.save();
         }
 
         //add standing/outside minutes
-        let minutesSinceLastUpdate = (nowMillis - scoreEntry.lastUpdate) / 1000 / 60;
+        let lastUpdate = DateTime.fromMillis(scoreEntry.lastUpdate.getTime()).toUTC();
+        let minutesSinceLastUpdate = Interval.fromDateTimes(lastUpdate, now).length('minutes');
         if (event.standing) {
             scoreEntry.standingMinutes += minutesSinceLastUpdate;
             scoreEntry.standingMinutes = Number(scoreEntry.standingMinutes).toFixed(2);
@@ -118,15 +109,13 @@ class EventHandleService {
 
         //update entry
         scoreEntry.steps += event.stepsSinceLastUpdate;
-        scoreEntry.lastUpdate = nowMillis;
+        scoreEntry.lastUpdate = now.toMillis();
 
         //calc new score
         const newScore = scoreEntry.steps * 0.5 + scoreEntry.standingMinutes + scoreEntry.outsideMinutes;
         scoreEntry.score = Math.ceil(newScore);
 
         await scoreEntry.save();
-        
-        return {};
     }
 
     isJson(string) {
