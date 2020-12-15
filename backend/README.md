@@ -9,5 +9,5 @@
 
 # Fake Events
 
-* Create an User by running ``node createFakeUser`` and copy the Board ID
+* Create an user by running ``node createFakeUser`` and copy the BoardID
 * Run ``node fakeEventEmitter [interval] [boardID]`` to publish fake events

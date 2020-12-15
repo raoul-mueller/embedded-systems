@@ -29,7 +29,7 @@ async function createUser() {
 
     connection.connection.close();
 
-    console.log(`User with ID ${user._id} and Device with BoardID ${device.uuid} created!`);
+    console.log(`User with ID ${user._id} and device with BoardID ${device.uuid} created!`);
 }
 
 createUser();
