@@ -4,6 +4,7 @@ const scoreEntryModel = require('../models/scoreEntry');
 const StadingsService = require('./standingsService');
 const { DateTime, Interval } = require('luxon');
 const util = require('util');
+const WebSocket = require('ws');
 
 class EventHandleService {
     constructor() {
