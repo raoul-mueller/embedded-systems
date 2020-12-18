@@ -12,6 +12,11 @@ class EventHandleService {
     }
 
     setup(mqtt, wss) {
+        wss.on('connection', (ws) => {
+            let standings = await this.stadingsService.generateStandings();
+            client.send(JSON.stringify(standings));
+        });
+
         mqtt.on('message', async (topic, message) => {
             if (topic !== 'ES/WS20/gruppe7/events') {
                 return;
