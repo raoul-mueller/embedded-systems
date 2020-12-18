@@ -12,9 +12,9 @@ class EventHandleService {
     }
 
     setup(mqtt, wss) {
-        wss.on('connection', (ws) => {
+        wss.on('connection', async (ws) => {
             let standings = await this.stadingsService.generateStandings();
-            client.send(JSON.stringify(standings));
+            ws.send(JSON.stringify(standings));
         });
 
         mqtt.on('message', async (topic, message) => {
