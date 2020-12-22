@@ -6,7 +6,9 @@ module.exports = (schema, options) => {
             docs = [docs];
         }
         for (const doc of docs) {
-            doc.pictureUrl = `${config.staticUrl}/${doc.pictureUrl}`;
+            if (doc.pictureUrl) {
+                doc.pictureUrl = `${config.staticUrl}/${doc.pictureUrl}`;
+            }
         }
     });
 }
