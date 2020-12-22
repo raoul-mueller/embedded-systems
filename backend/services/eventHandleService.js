@@ -25,7 +25,7 @@ class EventHandleService {
             await this.handleEvent(message);
 
             let standings = await this.stadingsService.generateStandings();
-            console.log(util.inspect(standings, false, null, true));
+            //console.log(util.inspect(standings, false, null, true));
 
             wss.clients.forEach((client) => {
                 if (client.readyState === WebSocket.OPEN) {

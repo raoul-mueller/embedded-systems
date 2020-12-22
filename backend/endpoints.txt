@@ -16,7 +16,10 @@ Erwartet bei beiden:
 
 /image
 
-//TODO implement
+multipart/form-data: (WICHTIG!! Genau in der Reihenfolge)
+
+uuid: string
+image: file
 
 
 WebSocket Output:
