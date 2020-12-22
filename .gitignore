@@ -4,3 +4,5 @@
 .idea/
 backend/.env
 backend/node_modules
+backend/images
+backend/uploads
