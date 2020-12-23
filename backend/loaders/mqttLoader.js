@@ -9,12 +9,12 @@ module.exports = async () => {
         //clean: false
       });
       
-      client.on('connect', function () {
-        client.subscribe('ES/WS20/gruppe7/events', function (err) {
+      client.on('connect', () => {
+        client.subscribe(config.mqttChannel, (err) => {
           if (!err) {
-            console.log('Subscribed to ES/WS20/gruppe7/events');
+            console.log(`Subscribed to ${config.mqttChannel}`);
           }
-        })
+        });
       });
 
       return client;

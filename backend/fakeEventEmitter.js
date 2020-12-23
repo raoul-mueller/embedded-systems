@@ -35,7 +35,7 @@ function publishFakeEvent() {
         outside: getRandomInt(100) >= outsideThreshold
     };
 
-    client.publish('ES/WS20/gruppe7/events', JSON.stringify(event));
+    client.publish(config.mqttChannel, JSON.stringify(event));
     console.log(`Published Event ${JSON.stringify(event)}`);
 }
 

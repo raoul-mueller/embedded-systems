@@ -80,8 +80,8 @@ class EventHandleService {
                 user: user._id,
             }).sort('-start').exec();
 
-            let prevScoreBegin = DateTime.fromMillis(prevScoreEntry.start.getTime()).toUTC();
-            if (prevScoreBegin.day !== hourBegin.day) {
+            let prevScoreBegin = DateTime.fromMillis(prevScoreEntry.start.getTime()).toLocal();
+            if (prevScoreBegin.day !== hourBegin.toLocal().day) {
                 prevScoreEntry = null;
             }
 
@@ -117,7 +117,7 @@ class EventHandleService {
         scoreEntry.lastUpdate = now.toMillis();
 
         //calc new score
-        const newScore = scoreEntry.steps * 0.5 + (scoreEntry.standingMinutes * 2) + (scoreEntry.outsideMinutes * 2);
+        const newScore = scoreEntry.steps * 0.2 + (scoreEntry.standingMinutes * 2) + (scoreEntry.outsideMinutes * 2);
         scoreEntry.score = Math.ceil(newScore);
 
         await scoreEntry.save();

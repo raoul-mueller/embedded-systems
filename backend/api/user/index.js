@@ -17,34 +17,18 @@ module.exports = (app) => {
     }),
     async (req, res, next) => {
       try {
-        let user = new userModel({
-          ...req.body,
-          highscore: 0
-        });
+        let user = await userModel.findOne({ uuid: req.body.uuid });
+        if (user === null) {
+          user = new userModel({
+            ...req.body,
+            highscore: 0,
+            pictureUrl: 'default.jpeg'
+          });
+        } else {
+          user.realname = req.body.realname;
+        }
 
         await user.save();
-        return res.status(200).json({ user });
-      } catch (e) {
-        return next(e);
-      }
-    },
-  );
-
-  route.put(
-    '/',
-    celebrate({
-      body: Joi.object({
-        uuid: Joi.string().required(),
-        realname: Joi.string().required()
-      })
-    }),
-    async (req, res, next) => {
-      try {
-        let user = await userModel.findOneAndUpdate(
-          { uuid: req.body.uuid },
-          { realname: req.body.realname }
-        );
-        user = await userModel.findOne({ uuid: req.body.uuid });
         return res.status(200).json({ user });
       } catch (e) {
         return next(e);
