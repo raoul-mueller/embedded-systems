@@ -1,7 +1,7 @@
 const config = require('../config');
 
 module.exports = (schema, options) => {
-    schema.post(['save', 'find', 'findOne'], function(docs) {
+    schema.post(['save', 'find', 'findOne', 'findOneAndUpdate'], function(docs) {
         if (!Array.isArray(docs)) {
             docs = [docs];
         }

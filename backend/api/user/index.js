@@ -24,11 +24,16 @@ module.exports = (app) => {
             highscore: 0,
             pictureUrl: 'default.jpeg'
           });
+
+          await user.save();
         } else {
-          user.realname = req.body.realname;
+          user = await userModel.findOneAndUpdate(
+            { uuid: req.body.uuid },
+            { realname: req.body.realname },
+            { new: true }
+          );
         }
 
-        await user.save();
         return res.status(200).json({ user });
       } catch (e) {
         return next(e);
