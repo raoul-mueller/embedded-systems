@@ -1,14 +1,15 @@
 const deviceModel = require('../models/device');
 const userModel = require('../models/user');
 const scoreEntryModel = require('../models/scoreEntry');
-const StadingsService = require('./standingsService');
+const StandingsService = require('./standingsService');
 const { DateTime, Interval } = require('luxon');
 const util = require('util');
+const config = require('../config');
 const WebSocket = require('ws');
 
 class EventHandleService {
     constructor() {
-        this.stadingsService = new StadingsService();
+        this.stadingsService = new StandingsService();
     }
 
     setup(mqtt, wss) {
@@ -18,7 +19,7 @@ class EventHandleService {
         });
 
         mqtt.on('message', async (topic, message) => {
-            if (topic !== 'ES/WS20/gruppe7/events') {
+            if (topic !== config.mqttChannel) {
                 return;
             }
 

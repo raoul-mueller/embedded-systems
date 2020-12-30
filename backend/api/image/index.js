@@ -16,9 +16,9 @@ module.exports = (app) => {
       try {
         let user = await userModel.findOneAndUpdate(
             { uuid: req.body.uuid },
-            { pictureUrl: req.file.filename }
+            { pictureUrl: req.file.filename },
+            { new: true }
         );
-        user = await userModel.findOne({ uuid: req.body.uuid });
         return res.status(200).json({ user });
       } catch (e) {
         return next(e);

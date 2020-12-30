@@ -2,7 +2,7 @@ const mqtt = require('mqtt');
 const config = require('../config');
 
 module.exports = async () => {
-    var client  = mqtt.connect(config.mqttUrl, {
+    const client = mqtt.connect(config.mqttUrl, {
         //clientId: "gruppe7Backend",
         username: config.mqttUser,
         password: config.mqttPassword,

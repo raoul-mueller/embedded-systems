@@ -1,5 +1,5 @@
 async function startServer() {
-  require('./loaders')();
+  await require('./loaders')();
 }
 
 startServer();

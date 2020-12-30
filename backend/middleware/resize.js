@@ -1,5 +1,4 @@
 const sharp = require('sharp');
-const mime = require('mime-types');
 const fs = require('fs');
 
 module.exports = async (req, res, next) => {
@@ -10,7 +9,7 @@ module.exports = async (req, res, next) => {
     const filename = `${req.body.uuid}.jpeg`;
     await sharp(req.file.path)
             .resize(128, 128)
-            .toFormat("jpeg")
+            .toFormat('jpeg')
             .jpeg({ quality: 90 })
             .toFile(__dirname + '/../images/' + filename);
     fs.unlinkSync(req.file.path);
