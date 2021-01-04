@@ -27,10 +27,10 @@ void main() {
 /// The app class.
 ///
 /// This class should be treated as a singleton.
-/// The app's global variable can be accessed through [HabitsApp.appGlobals].
+/// The app's global variable can be accessed through [HabitsApp.globals].
 class HabitsApp extends MaterialApp {
   /// Since this class should be treated as a singleton, the default constructor returns the instance.
-  factory HabitsApp() => instance;
+  factory HabitsApp() => _instance;
 
   HabitsApp._()
       : super(
@@ -85,14 +85,14 @@ class HabitsApp extends MaterialApp {
             title: 'Habits');
 
   /// The only instance.
-  static final HabitsApp instance = HabitsApp._();
+  static final HabitsApp _instance = HabitsApp._();
 
   /// The app's global variables.
-  final AppGlobals appGlobals = AppGlobals();
+  final AppGlobals globals = AppGlobals();
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) =>
-      super.debugFillProperties(properties..add(DiagnosticsProperty<AppGlobals>('appGlobals', appGlobals)));
+      super.debugFillProperties(properties..add(DiagnosticsProperty<AppGlobals>('appGlobals', globals)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
