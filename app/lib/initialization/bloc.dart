@@ -73,7 +73,10 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
         Future<void>.delayed(const Duration(milliseconds: 500)),
         // Find device id and check whether the device exists in the database.
         (() async {
-          HabitsApp().globals.deviceId = await _deviceId;
+          if (Platform.isAndroid == Platform.isIOS) throw InvalidDeviceException();
+          HabitsApp().globals.deviceId = Platform.isAndroid //
+              ? (await DeviceInfoPlugin().androidInfo).androidId
+              : (await DeviceInfoPlugin().iosInfo).identifierForVendor;
           // todo: this endpoint needs to be established
           // todo: this line needs debugging
           deviceInDatabase =
@@ -96,14 +99,11 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
       yield const IdleState();
     }
   }
+}
 
   Future<String> get _deviceId async {
     if (Platform.isAndroid == Platform.isIOS) throw InvalidDeviceException();
     return Platform.isAndroid //
-        ? (await DeviceInfoPlugin().androidInfo).androidId
-        : (await DeviceInfoPlugin().iosInfo).identifierForVendor;
-  }
-}
 
 /// The [BlocEvent] interface.
 ///
