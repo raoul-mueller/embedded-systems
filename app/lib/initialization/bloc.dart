@@ -11,7 +11,7 @@ import 'package:http/http.dart' as http; // ignore: import_of_legacy_library_int
 ///
 /// This [Bloc] requires neither any [HabitsApp.globals] nor any advanced actions and its only task is the app's initialization.
 /// After the initialization is finished, the user is either forwarded to the home screen or to the setup screen,
-/// depending on whether this device was used before or not.
+/// depending on whether this phone was used before or not.
 ///
 /// Available [BlocEvent]s are:
 /// - [BuildEvent]
@@ -23,6 +23,7 @@ import 'package:http/http.dart' as http; // ignore: import_of_legacy_library_int
 ///
 /// Available actions are:
 /// - [BlocView.showError]
+/// - [BlocView.replaceWithScreen]
 class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
   /// The constructor.
   Bloc(this._view) : super(initialState);
@@ -90,7 +91,7 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
     } on InvalidDeviceException {
       _view.showError('This device is neither an android device nor an iOS device and therefore not compatible with this app.');
     } on SocketException {
-      _view.showError('We have problems reaching the internet. Please try connecting to the internet (differently) and try again.');
+      _view.showError('We have problems reaching the server. Please try connecting to the internet (differently) and try again.');
     } finally {
       yield const IdleState();
     }
