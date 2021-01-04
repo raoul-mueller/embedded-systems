@@ -100,4 +100,10 @@ class HabitsApp extends MaterialApp {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// The app's global variables can be encapsulated in this class.
-class AppGlobals {}
+class AppGlobals {
+  /// The [deviceId] is unique to this device.
+  late final String deviceId;
+
+  /// Whether there is an entry for this device in the database.
+  bool deviceRegistered = false;
+}
