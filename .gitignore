@@ -3,3 +3,15 @@
 
 .idea/
 backend/.env
+
+app/android/
+
+app/ios/
+
+*.iml
+
+app/.packages
+
+app/pubspec.lock
+
+app/.dart_tool/
