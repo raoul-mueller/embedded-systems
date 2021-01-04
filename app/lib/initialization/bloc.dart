@@ -159,7 +159,7 @@ abstract class BlocView {
   void showError(String message);
 
   /// All screens are popped and replaced with the given path.
-  void replaceWithScreen(String route, [Map<String, dynamic>? options]);
+  void replaceWithScreen(String route);
 }
 
 /// This exception is thrown, if the device is neither an android device nor an iOS device.
