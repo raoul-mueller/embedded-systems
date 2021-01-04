@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+export 'dart:typed_data';
+
 export 'package:flutter/foundation.dart';
 export 'package:flutter/material.dart';
 
