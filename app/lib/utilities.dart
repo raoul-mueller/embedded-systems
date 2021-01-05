@@ -23,8 +23,9 @@ class Archive<T> {
   }
 
   /// Whether there is data of a specific type [U] in the [Archive].
-  bool containsOf<U>() {
-    for (final T t in _archive) if (t is U) return true;
-    return false;
+  int countOf<U>() {
+    int count = 0;
+    for (final T t in _archive) if (t is U) count++;
+    return count;
   }
 }

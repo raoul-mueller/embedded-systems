@@ -76,7 +76,7 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
   /// The [BuildEvent] handler.
   Stream<BlocState> _onBuildEvent(BuildEvent event) async* {
     // Only execute this handler once.
-    if (_archive.containsOf<BuildEvent>()) return;
+    if (_archive.countOf<BuildEvent>() > 1) return;
 
     add(const StartFetchingUserDataEvent());
   }
