@@ -25,11 +25,9 @@ import 'package:http/http.dart' as http; // ignore: import_of_legacy_library_int
 /// Available [BlocState]s are:
 /// - [UserDataNotFetchedYetState]
 /// - [IdleState]
-/// - [DownloadRunningState]
-/// - [UploadRunningState]
+/// - [LoadingState]
 ///
 /// Available actions are:
-/// - [BlocView.popCurrentScreen]
 /// - [BlocView.replaceWithScreen]
 /// - [BlocView.showError]
 /// - [BlocView.showMessage]
@@ -54,7 +52,7 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
   static const Set<Type> events = <Type>{BuildEvent, StartFetchingUserDataEvent, SendButtonPressedEvent, BackButtonPressedEvent, ImageTappedEvent};
 
   /// A collection of possible states.
-  static const Set<Type> states = <Type>{UserDataNotFetchedYetState, IdleState, DownloadRunningState, UploadRunningState};
+  static const Set<Type> states = <Type>{UserDataNotFetchedYetState, IdleState, LoadingState};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // event handler methods
@@ -90,7 +88,7 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
     }
 
     // Present a loading state.
-    yield const DownloadRunningState();
+    yield const LoadingState();
 
     if (!HabitsApp().globals.deviceRegistered) {
       try {
@@ -141,7 +139,7 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
     }
 
     // Present a loading state.
-    yield const UploadRunningState();
+    yield const LoadingState();
 
     try {
       await Future.wait<dynamic>(<Future<dynamic>>[
@@ -188,7 +186,10 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
     }
 
     // Take an image.
-    yield IdleState(displayName: (state as IdleState).displayName, profileImage: await _view.takeImage());
+    final IdleState oldState = state as IdleState;
+    yield const LoadingState();
+    final Uint8List? profileImage = await _view.takeImage();
+    yield IdleState(displayName: oldState.displayName, profileImage: profileImage ?? oldState.profileImage);
   }
 }
 
@@ -282,18 +283,11 @@ class IdleState extends BlocState {
   final Uint8List profileImage;
 }
 
-/// A [DownloadRunningState] shall be presented when the bloc is downloading the user data.
+/// A [LoadingState] shall be presented when the user should not be able to interact with the screen.
 @immutable
-class DownloadRunningState extends BlocState {
+class LoadingState extends BlocState {
   /// The constructor
-  const DownloadRunningState();
-}
-
-/// An [UploadRunningState] shall be presented when the bloc is uploading the user data.
-@immutable
-class UploadRunningState extends BlocState {
-  /// The constructor
-  const UploadRunningState();
+  const LoadingState();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -304,9 +298,6 @@ class UploadRunningState extends BlocState {
 ///
 /// All views must implement this interface.
 abstract class BlocView {
-  /// This screen is popped.
-  void popCurrentScreen();
-
   /// All screens are popped and replaced with the given path.
   void replaceWithScreen(String route);
 
@@ -320,5 +311,5 @@ abstract class BlocView {
   void showSuccess(String message);
 
   /// A new image is taken.
-  Future<Uint8List> takeImage();
+  Future<Uint8List?> takeImage();
 }
