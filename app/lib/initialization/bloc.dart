@@ -74,6 +74,8 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
 
   /// The [StartEvent] handler.
   Stream<BlocState> _onStartEvent(StartEvent event) async* {
+    yield const RunningState();
+
     try {
       late final bool deviceInDatabase;
       await Future.wait<dynamic>(<Future<dynamic>>[
