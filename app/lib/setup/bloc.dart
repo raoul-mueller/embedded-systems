@@ -144,11 +144,11 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
     try {
       await Future.wait<dynamic>(<Future<dynamic>>[
         // Upload the display name.
-        // todo: this endpoint needs to be established
         // todo: this line needs debugging
         http.post('https://embedded-systems.fantasia.dev/api/v1/users',
             headers: <String, String>{'content-type': 'application/json'},
             body: jsonEncode(<String, String>{'uuid': HabitsApp().globals.deviceId, 'realname': event.displayName})),
+        // todo: this line needs debugging
         // Upload the profile image.
         (() => http.post('https://embedded-systems.fantasia.dev/api/v1/image',
             headers: <String, String>{'content-type': 'application/json'}, body: event.profileImage))()
