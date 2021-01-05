@@ -46,8 +46,8 @@ class HabitsApp extends MaterialApp {
             initialRoute: '/initialization',
             routes: <String, WidgetBuilder>{
               '/initialization': (BuildContext context) => const InitializationScreen(),
-              '/setup': (BuildContext context) => throw UnimplementedError(), // todo: insert real screen
-              '/home': (BuildContext context) => throw UnimplementedError() // todo: insert real screen
+              '/setup': (BuildContext context) => const SetupScreen(),
+              '/home': (BuildContext context) => const HomeScreen()
             },
             theme: ThemeData(
                 colorScheme: ColorScheme.light(
