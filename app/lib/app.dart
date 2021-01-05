@@ -1,8 +1,14 @@
 // © 2021 Raoul Müller. All rights reserved.
 
+import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:habits/home/screen.dart';
+import 'package:habits/initialization/screen.dart';
+import 'package:habits/setup/screen.dart';
 
 export 'dart:typed_data';
 
@@ -39,7 +45,7 @@ class HabitsApp extends MaterialApp {
             builder: (BuildContext context, Widget? child) => MediaQuery(data: MediaQuery.of(context).copyWith(textScaleFactor: 1), child: child!),
             initialRoute: '/initialization',
             routes: <String, WidgetBuilder>{
-              '/initialization': (BuildContext context) => throw UnimplementedError(), // todo: insert real screen
+              '/initialization': (BuildContext context) => const InitializationScreen(),
               '/setup': (BuildContext context) => throw UnimplementedError(), // todo: insert real screen
               '/home': (BuildContext context) => throw UnimplementedError() // todo: insert real screen
             },
@@ -67,7 +73,7 @@ class HabitsApp extends MaterialApp {
                 dividerTheme: const DividerThemeData(),
                 elevatedButtonTheme: const ElevatedButtonThemeData(),
                 floatingActionButtonTheme: const FloatingActionButtonThemeData(),
-                iconTheme: const IconThemeData(),
+                iconTheme: const IconThemeData(color: Colors.orange),
                 inputDecorationTheme: const InputDecorationTheme(),
                 navigationRailTheme: const NavigationRailThemeData(),
                 outlinedButtonTheme: const OutlinedButtonThemeData(),
@@ -80,7 +86,7 @@ class HabitsApp extends MaterialApp {
                 snackBarTheme: const SnackBarThemeData(),
                 textButtonTheme: const TextButtonThemeData(),
                 textSelectionTheme: const TextSelectionThemeData(),
-                textTheme: const TextTheme(),
+                textTheme: TextTheme(headline1: GoogleFonts.audiowide()),
                 timePickerTheme: const TimePickerThemeData(),
                 toggleButtonsTheme: const ToggleButtonsThemeData(),
                 tooltipTheme: const TooltipThemeData()),
