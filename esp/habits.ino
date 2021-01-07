@@ -1,5 +1,5 @@
 /**
- * Eingebttete Systeme 2020/2021 - Habbits (Gruppe 8)
+ * Eingebttete Systeme 2020/2021 - Habits (Gruppe 8)
  * 
  * 
  * This file is ment for the esp32 to measure and calculate if a user is standing, outside and how many steps 
