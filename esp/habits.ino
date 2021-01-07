@@ -338,19 +338,19 @@ bool stepped(Vector normAccel, float &lastNorm){
     /// normalizing x, y, or z if greater than 5/6;
     float x = normAccel.XAxis;
     if(x > 6){    
-      ///39.3 get by testing
+      ///39.3 got by testing
       x = -(x - 39.3);
     }
     
     float y = normAccel.YAxis;
     if(y > 5){    
-      ///39.3 get by testing
+      ///39.3 got by testing
       y = -(y - 39.3);
     }
     
     float z = normAccel.ZAxis;
     if(z > 5){    
-      ///39.3 get by testing
+      ///39.3 got by testing
       z = -(z - 39.3);
     }
     
@@ -412,13 +412,13 @@ bool isStanding(Vector normAccel){
     if(x <= 6){
       float y = normAccel.YAxis;
       if(y > 5){    
-        ///39.3 get by testing
+        ///39.3 got by testing
         y = -(y - 39.3);
       }
     
       float z = normAccel.ZAxis;
       if(z > 5){
-        ///39.3 get by testing
+        ///39.3 got by testing
         z = -(z - 39.3);
       }
     
