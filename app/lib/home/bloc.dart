@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:bloc/bloc.dart' as bloc;
 import 'package:habits/utilities.dart';
@@ -20,6 +19,7 @@ import 'package:http/http.dart' as http; // ignore: import_of_legacy_library_int
 /// - [BuildEvent]
 /// - [SetupButtonPressedEvent]
 /// - [NewDataReceivedEvent]
+/// - [UserTileTappedEvent]
 ///
 /// Available [BlocState]s are:
 /// - [NoDataReceivedYetState]
@@ -44,7 +44,7 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
   static const BlocState initialState = NoDataReceivedYetState();
 
   /// A collection of possible events.
-  static const Set<Type> events = <Type>{BuildEvent, SetupButtonPressedEvent, NewDataReceivedEvent};
+  static const Set<Type> events = <Type>{BuildEvent, SetupButtonPressedEvent, NewDataReceivedEvent, UserTileTappedEvent};
 
   /// A collection of possible states.
   static const Set<Type> states = <Type>{NoDataReceivedYetState, IdleState};
@@ -62,6 +62,7 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
     if (event is BuildEvent) yield* _onBuildEvent(event);
     if (event is SetupButtonPressedEvent) yield* _onSetupButtonPressedEvent(event);
     if (event is NewDataReceivedEvent) yield* _onNewDataReceivedEvent(event);
+    if (event is UserTileTappedEvent) yield* _onUserTileTappedEvent(event);
   }
 
   /// The [BuildEvent] handler.
@@ -83,8 +84,9 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
     try {
       final List<User> users = <User>[];
       int rank = 1;
-      for (final Map<String, dynamic> userData in (jsonDecode(event.data) as Map<String, List<Map<String, dynamic>>>)['standings']!) {
-        final bool ownDevice = userData['user']['uuid'] as String == HabitsApp().globals.deviceId;
+      for (final Map<String, dynamic> userData in (jsonDecode(event.data) as Map<String, dynamic>)['standings']!) {
+        final String deviceId = userData['user']['uuid'] as String;
+        final bool ownDevice = deviceId == HabitsApp().globals.deviceId;
         final String displayName = userData['user']['realname'] as String;
         // todo: cache images (add image change date to stream data)
         final Uint8List profileImage = (await http.get(userData['user']['pictureUrl'] as String)).bodyBytes;
@@ -104,6 +106,7 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
             (userData['outside']['hourly']['yesterday'] as List<dynamic>).map<int>((dynamic data) => int.parse(data.toString())).toList();
 
         users.add(User(
+            deviceId: deviceId,
             rank: rank++,
             ownDevice: ownDevice,
             displayName: displayName,
@@ -117,12 +120,26 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
             outsideToday: outsideToday,
             outsideYesterday: outsideYesterday));
       }
+      final int highestScore = sumOf(users.first.scoreToday);
 
       yield IdleState(
-          users: users, highestScore: max(users.first.scoreToday.reduce((int a, int b) => a + b), users.first.scoreToday.reduce((int a, int b) => a + b)));
+          users: users, highestScore: highestScore != 0 ? highestScore : 1, expandedUser: (state is IdleState) ? (state as IdleState).expandedUser : null);
     } on Exception {
       _view.showError('Something went wrong while parsing the data received from the server. Please report to the developer.');
     }
+  }
+
+  /// The [UserTileTappedEvent] handler.
+  Stream<BlocState> _onUserTileTappedEvent(UserTileTappedEvent event) async* {
+    if (state is! IdleState) {
+      _view.showError('This option should not be available. Please report to the developer.');
+      return;
+    }
+
+    final List<User> users = (state as IdleState).users;
+    final int highestScore = (state as IdleState).highestScore;
+    final String? expandedUser = (state as IdleState).expandedUser == event.deviceId ? null : event.deviceId;
+    yield IdleState(users: users, highestScore: highestScore, expandedUser: expandedUser);
   }
 }
 
@@ -153,7 +170,7 @@ class SetupButtonPressedEvent extends BlocEvent {
   const SetupButtonPressedEvent();
 }
 
-/// A [NewDataReceivedEvent] shall be added whenever the websocket has new data.
+/// The [NewDataReceivedEvent].
 @immutable
 class NewDataReceivedEvent extends BlocEvent {
   /// The constructor.
@@ -161,6 +178,16 @@ class NewDataReceivedEvent extends BlocEvent {
 
   /// The data received from the server.
   final String data;
+}
+
+/// The [UserTileTappedEvent].
+@immutable
+class UserTileTappedEvent extends BlocEvent {
+  /// The constructor.
+  const UserTileTappedEvent(this.deviceId);
+
+  /// The tapped user's phone's id.
+  final String deviceId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -187,13 +214,16 @@ class NoDataReceivedYetState extends BlocState {
 @immutable
 class IdleState extends BlocState {
   /// The constructor.
-  const IdleState({required this.users, required this.highestScore});
+  const IdleState({required this.users, required this.highestScore, required this.expandedUser});
 
   /// A list of all users.
   final List<User> users;
 
   /// The highest score of all users (today and yesterday)
   final int highestScore;
+
+  /// The expanded user's index.
+  final String? expandedUser;
 }
 
 /// The view interface.
@@ -215,7 +245,8 @@ abstract class BlocView {
 class User {
   /// The constructor.
   User(
-      {required this.rank,
+      {required this.deviceId,
+      required this.rank,
       required this.ownDevice,
       required this.displayName,
       required this.profileImage,
@@ -227,6 +258,9 @@ class User {
       required this.standingYesterday,
       required this.outsideToday,
       required this.outsideYesterday});
+
+  /// The user's phone's id.
+  final String deviceId;
 
   /// The user's rank.
   final int rank;
@@ -264,3 +298,6 @@ class User {
   /// Yesterday's outside score.
   final List<int> outsideYesterday;
 }
+
+/// The sum of a list of integers.
+int sumOf(Iterable<int> items) => items.isEmpty ? 0 : items.reduce((int a, int b) => a + b);
