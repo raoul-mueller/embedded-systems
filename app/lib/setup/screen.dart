@@ -99,6 +99,9 @@ class _SetupScreen extends State<SetupScreen> implements BlocView {
   }
 
   @override
+  void popCurrentScreen() => Navigator.pop(context);
+
+  @override
   void replaceWithScreen(String route) => Navigator.pushNamedAndRemoveUntil(context, route, (_) => false);
 
   @override
@@ -117,5 +120,5 @@ class _SetupScreen extends State<SetupScreen> implements BlocView {
     ..showSnackBar(SnackBar(backgroundColor: Colors.green, content: Text(message)));
 
   @override
-  Future<Uint8List?> takeImage() async => (await ImagePicker().getImage(source: ImageSource.camera))?.readAsBytes();
+  Future<Uint8List?> takeImage() async => (await ImagePicker().getImage(imageQuality: 10, source: ImageSource.camera))?.readAsBytes();
 }

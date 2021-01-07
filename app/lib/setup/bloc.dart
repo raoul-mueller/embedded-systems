@@ -28,6 +28,7 @@ import 'package:http/http.dart' as http; // ignore: import_of_legacy_library_int
 /// - [LoadingState]
 ///
 /// Available actions are:
+/// - [BlocView.popCurrentScreen]
 /// - [BlocView.replaceWithScreen]
 /// - [BlocView.showError]
 /// - [BlocView.showMessage]
@@ -142,25 +143,30 @@ class Bloc extends bloc.Bloc<BlocEvent, BlocState> {
     yield const LoadingState();
 
     try {
-      await Future.wait<dynamic>(<Future<dynamic>>[
-        // Upload the display name.
-        // todo: this line needs debugging
-        http.post('https://embedded-systems.fantasia.dev/api/v1/users',
-            headers: <String, String>{'content-type': 'application/json'},
-            body: jsonEncode(<String, String>{'uuid': HabitsApp().globals.deviceId, 'realname': event.displayName})),
-        // todo: this line needs debugging
-        // Upload the profile image.
-        (() => http.post('https://embedded-systems.fantasia.dev/api/v1/image',
-            headers: <String, String>{'content-type': 'application/json'}, body: event.profileImage))()
-      ]);
+      // Upload the display name.
+      // todo: this line needs debugging
+      await http.post('https://embedded-systems.fantasia.dev/api/v1/users',
+          headers: <String, String>{'content-type': 'application/json'},
+          body: jsonEncode(<String, String>{'uuid': HabitsApp().globals.deviceId, 'realname': event.displayName}));
+      // todo: this line needs debugging
+      // todo: error: request entry too large
+      // Upload the profile image.
+      final http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse('https://embedded-systems.fantasia.dev/api/v1/image'));
+      request.files.add(http.MultipartFile.fromBytes('image', event.profileImage));
+      print(request);
+      http.StreamedResponse response = await request.send();
+      print(response.statusCode);
+      print(response.reasonPhrase);
+
+      // Go to home screen and display a success message.
+      state.displayBackButton //
+          ? _view.popCurrentScreen()
+          : _view.replaceWithScreen('/home');
 
       // Update the deviceRegistered flag.
       HabitsApp().globals.deviceRegistered = true;
 
-      // Go to home screen and display a success message.
-      _view
-        ..replaceWithScreen('/home')
-        ..showSuccess('User data has successfully been updated.');
+      _view.showSuccess('User data has successfully been updated.');
     } on SocketException {
       _view.showError('We have problems reaching the server. Please try connecting to the internet (differently) and try again.');
     } finally {
@@ -298,6 +304,9 @@ class LoadingState extends BlocState {
 ///
 /// All views must implement this interface.
 abstract class BlocView {
+  /// The current screen is popped.
+  void popCurrentScreen();
+
   /// All screens are popped and replaced with the given path.
   void replaceWithScreen(String route);
 
