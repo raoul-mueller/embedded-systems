@@ -13,36 +13,51 @@ class EventHandleService {
     }
 
     setup(mqtt, wss) {
+        this.mqtt = mqtt;
+        this.wss = wss;
+
         wss.on('connection', async (ws) => {
             let standings = await this.stadingsService.generateStandings();
             ws.send(JSON.stringify(standings));
-        });
 
-        mqtt.on('message', async (topic, message) => {
-            if (topic !== config.mqttChannel) {
-                return;
-            }
-
-            await this.handleEvent(message);
-
-            let standings = await this.stadingsService.generateStandings();
-            //console.log(util.inspect(standings, false, null, true));
-
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify(standings));
+            ws.on('message', async (message) => {
+                if (message === 'standings') {
+                    let standings = await this.stadingsService.generateStandings();
+                    ws.send(JSON.stringify(standings));
                 }
             });
         });
+
+        mqtt.on('message', async (topic, message) => {
+            let curTopic = topic.replace(config.mqttChannelBase, '');
+            switch (curTopic) {
+                case config.mqttEventChannel:
+                    await this.onDeviceEvent(message);
+                    break;
+            }
+        });
     }
 
-    async handleEvent(message) {
-        if (!this.isJson(message)) {
-            return;
-        }
+    async onDeviceEvent(message) {
+        const event = this.parseMessage(message);
 
-        const event = JSON.parse(message);
-        
+        const [device, user] = await this.handleDeviceEvent(event);
+
+        const standings = await this.stadingsService.generateStandings();
+        //console.log(util.inspect(standings, false, null, true));
+
+        // publish last score entry to ES/WS20/gruppe7/<device uuid>
+        const standing = await this.stadingsService.generateStandingForUser(user);
+        this.mqtt.publish(`${config.mqttChannelBase}/${event.boardID}`, JSON.stringify(standing));
+
+        this.wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(standings));
+            }
+        });
+    }
+
+    async handleDeviceEvent(event) {
         //fetch device
         const device = await deviceModel.findOne({
             uuid: event.boardID
@@ -81,9 +96,11 @@ class EventHandleService {
                 user: user._id,
             }).sort('-start').exec();
 
-            let prevScoreBegin = DateTime.fromMillis(prevScoreEntry.start.getTime()).toLocal();
-            if (prevScoreBegin.day !== hourBegin.toLocal().day) {
-                prevScoreEntry = null;
+            if (prevScoreEntry !== null) {
+                let prevScoreBegin = DateTime.fromJSDate(prevScoreEntry.start).toLocal();
+                if (prevScoreBegin.day !== hourBegin.toLocal().day) {
+                    prevScoreEntry = null;
+                }
             }
 
             const scoreEntryData = {
@@ -103,7 +120,7 @@ class EventHandleService {
 
         //add standing/outside minutes
         let lastUpdate = DateTime.fromJSDate(scoreEntry.lastUpdate).toUTC();
-        let minutesSinceLastUpdate = Interval.fromDateTimes(lastUpdate, now).length('minutes');
+        let minutesSinceLastUpdate = Math.min(Interval.fromDateTimes(lastUpdate, now).length('minutes'), 0.5);
         if (event.standing) {
             scoreEntry.standingMinutes += minutesSinceLastUpdate;
             scoreEntry.standingMinutes = Number(scoreEntry.standingMinutes).toFixed(2);
@@ -122,6 +139,16 @@ class EventHandleService {
         scoreEntry.score = Math.ceil(newScore);
 
         await scoreEntry.save();
+
+        return [device, user];
+    }
+
+    parseMessage(message) {
+        if (!this.isJson(message)) {
+            return {};
+        }
+
+        return JSON.parse(message);
     }
 
     isJson(string) {

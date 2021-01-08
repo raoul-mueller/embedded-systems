@@ -7,15 +7,21 @@ module.exports = async () => {
         username: config.mqttUser,
         password: config.mqttPassword,
         //clean: false
-      });
-      
-      client.on('connect', () => {
-        client.subscribe(config.mqttChannel, (err) => {
-          if (!err) {
-            console.log(`Subscribed to ${config.mqttChannel}`);
-          }
-        });
-      });
+    });
 
-      return client;
+    const channels = [
+        config.mqttEventChannel,
+    ]
+
+    client.on('connect', () => {
+        channels.forEach((channel) => {
+            client.subscribe(config.mqttChannelBase + channel, (err) => {
+                if (!err) {
+                    console.log(`Subscribed to ${channel}`);
+                }
+            });
+        });
+    });
+
+    return client;
 }

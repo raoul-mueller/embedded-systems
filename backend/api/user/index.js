@@ -7,6 +7,24 @@ const route = Router();
 module.exports = (app) => {
   app.use('/users', route);
 
+  route.get(
+    '/:uuid',
+    async (req, res, next) => {
+      try {
+        let user = await userModel.findOne({ uuid: req.params.uuid }).exec();
+        if (user === null) {
+          let error = new Error('User not found');
+          error.status = 404;
+          return next(error);
+        }
+
+        return res.status(200).json({ user });
+      } catch (e) {
+        return next(e);
+      }
+    }
+  )
+
   route.post(
     '/',
     celebrate({

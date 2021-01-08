@@ -13,7 +13,8 @@ module.exports = {
   mqttUrl: process.env.MQTT_URL,
   mqttUser: process.env.MQTT_USER,
   mqttPassword: process.env.MQTT_PASSWORD,
-  mqttChannel: process.env.MQTT_CHANNEL,
+  mqttChannelBase: process.env.MQTT_CHANNEL_BASE,
+  mqttEventChannel: process.env.MQTT_EVENT_CHANNEL,
 
   expressPort: process.env.EXPRESS_PORT,
   expressApiPrefix: process.env.EXPRESS_API_PREFIX,

@@ -2,6 +2,7 @@ const Router = require('express').Router;
 const userModel = require('../../models/user');
 const upload = require('../../middleware/upload');
 const resize = require('../../middleware/resize');
+const { DateTime } = require('luxon');
 
 const route = Router();
 
@@ -16,7 +17,10 @@ module.exports = (app) => {
       try {
         let user = await userModel.findOneAndUpdate(
             { uuid: req.body.uuid },
-            { pictureUrl: req.file.filename },
+            {
+                pictureUrl: req.file.filename,
+                pictureUpdated: DateTime.utc()
+            },
             { new: true }
         );
         return res.status(200).json({ user });

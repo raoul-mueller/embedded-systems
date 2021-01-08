@@ -8,58 +8,8 @@ class StadingsService {
         let standings = { standings: [] };
 
         for (const user of users) {
-            let scoreDetail = {
-                current: 0,
-                lastDay: 0,
-                hourly : {
-                    today: [],
-                    yesterday: []
-                }
-            };
-
-            let standing = {
-                user,
-                score: { ...this.copyObject(scoreDetail) },
-                steps: { ...this.copyObject(scoreDetail) },
-                standing: { ...this.copyObject(scoreDetail) },
-                outside: { ...this.copyObject(scoreDetail) }
-            };
-
-            let todayBegin = DateTime.utc().startOf('day');
-            let todayEnd = DateTime.utc().endOf('day');
-
-            let scoresToday = await scoreEntryModel.find({
-                user: user._id,
-                start: { $gte: todayBegin },
-                end: { $lte: todayEnd }
-            }).exec();
-
-            let userHighscoreChanged = false;
-            for (const score of scoresToday) {
-                this.addScoreToStanding(score, standing);
-                if (score.score > (user.highscore || 0)) {
-                    user.highscore = score.score;
-                    userHighscoreChanged = true;
-                }
-            }
-
-            let yesterdayBegin = DateTime.utc().minus({ days: 1 }).startOf('day');
-
-            let scoresYesterday = await scoreEntryModel.find({
-                user: user._id,
-                start: { $gte: yesterdayBegin },
-                end: { $lte: todayBegin }
-            }).exec();
-
-            for (const score of scoresYesterday) {
-                this.addScoreToStanding(score, standing, 'yesterday');
-            }
-
+            let standing = await this.generateStandingForUser(user);
             standings.standings.push(standing);
-
-            if (userHighscoreChanged) {
-                await user.save();
-            }
         }
 
         standings.standings.sort((a, b) => a.score.current - b.score.current);
@@ -67,22 +17,102 @@ class StadingsService {
         return standings;
     }
 
+    async generateStandingForUser(user) {
+        let scoreDetail = {
+            current: 0,
+            lastDay: 0,
+            hourly : {
+                today: Array.from({length: 24}, () => 0),
+                yesterday: Array.from({length: 24}, () => 0)
+            }
+        };
+
+        let standing = {
+            user,
+            score: { ...this.copyObject(scoreDetail) },
+            steps: { ...this.copyObject(scoreDetail) },
+            standing: { ...this.copyObject(scoreDetail) },
+            outside: { ...this.copyObject(scoreDetail) }
+        };
+
+        let todayBegin = DateTime.local().startOf('day').toUTC();
+        let todayEnd = DateTime.local().endOf('day').toUTC();
+
+        let scoresToday = await scoreEntryModel.find({
+            user: user._id,
+            start: { $gte: todayBegin },
+            end: { $lte: todayEnd }
+        }).exec();
+
+        let userHighscoreChanged = false;
+        for (const score of scoresToday) {
+            this.addScoreToStanding(score, standing);
+            if (score.score > (user.highscore || 0)) {
+                user.highscore = score.score;
+                userHighscoreChanged = true;
+            }
+        }
+
+        let yesterdayBegin = DateTime.utc().minus({ days: 1 }).startOf('day');
+
+        let scoresYesterday = await scoreEntryModel.find({
+            user: user._id,
+            start: { $gte: yesterdayBegin },
+            end: { $lte: todayBegin }
+        }).exec();
+
+        for (const score of scoresYesterday) {
+            this.addScoreToStanding(score, standing, 'yesterday');
+        }
+
+        const fillUntil = {
+            today: scoresToday.length > 0 ?
+                DateTime.fromJSDate(scoresToday[scoresToday.length - 1].start).toLocal().hour - 1 :
+                0,
+            yesterday: scoresYesterday.length > 0 ?
+                DateTime.fromJSDate(scoresYesterday[scoresYesterday.length - 1].start).toLocal().hour - 1 :
+                0
+        }
+
+        for (let key of Object.keys(standing)) {
+            if (key !== 'user') {
+                for (let day of Object.keys(standing[key].hourly)) {
+                    let curScore = 0;
+                    for (let [i, s] of standing[key].hourly[day].entries()) {
+                        if (i >= fillUntil[day]) {
+                            break;
+                        }
+                        if (s > curScore) {
+                            curScore = s;
+                        }
+                        if (s < curScore) {
+                            standing[key].hourly[day][i] = curScore;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (userHighscoreChanged) {
+            await user.save();
+        }
+
+        return standing;
+    }
+
     addScoreToStanding(score, standing, day = 'today') {
-        let current = standing.score[day === 'today' ? 'current' : 'lastDay'];
-        standing.score[day === 'today' ? 'current' : 'lastDay'] = Math.max(current, score.score);
-        standing.score.hourly[day].push(score.score);
+        let scoreHour = DateTime.fromJSDate(score.start).toLocal().hour - 1;
 
-        current = standing.steps[day === 'today' ? 'current' : 'lastDay'];
-        standing.steps[day === 'today' ? 'current' : 'lastDay'] = Math.max(current, score.steps);
-        standing.steps.hourly[day].push(score.steps);
+        this.addScoreTypeToStanding(standing, day, scoreHour, 'score', score.score);
+        this.addScoreTypeToStanding(standing, day, scoreHour, 'steps', score.steps);
+        this.addScoreTypeToStanding(standing, day, scoreHour, 'standing', score.standingMinutes);
+        this.addScoreTypeToStanding(standing, day, scoreHour, 'outside', score.outsideMinutes);
+    }
 
-        current = standing.standing[day === 'today' ? 'current' : 'lastDay'];
-        standing.standing[day === 'today' ? 'current' : 'lastDay'] = Math.max(current, score.standingMinutes);
-        standing.standing.hourly[day].push(score.standingMinutes);
-
-        current = standing.outside[day === 'today' ? 'current' : 'lastDay'];
-        standing.outside[day === 'today' ? 'current' : 'lastDay'] = Math.max(current, score.outsideMinutes);
-        standing.outside.hourly[day].push(score.outsideMinutes);
+    addScoreTypeToStanding(standing, day, hour, type, score) {
+        let current = standing[type][day === 'today' ? 'current' : 'lastDay'];
+        standing[type][day === 'today' ? 'current' : 'lastDay'] = Math.max(current, score);
+        standing[type].hourly[day][hour] = score;
     }
 
     copyObject(obj) {

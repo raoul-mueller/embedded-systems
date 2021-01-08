@@ -35,7 +35,7 @@ function publishFakeEvent() {
         outside: getRandomInt(100) >= outsideThreshold
     };
 
-    client.publish(config.mqttChannel, JSON.stringify(event));
+    client.publish(config.mqttChannelBase + config.mqttEventChannel, JSON.stringify(event));
     console.log(`Published Event ${JSON.stringify(event)}`);
 }
 
