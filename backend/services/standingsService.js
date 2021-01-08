@@ -65,21 +65,15 @@ class StadingsService {
             this.addScoreToStanding(score, standing, 'yesterday');
         }
 
-        const fillUntil = {
-            today: scoresToday.length > 0 ?
-                DateTime.fromJSDate(scoresToday[scoresToday.length - 1].start).toLocal().hour - 1 :
-                0,
-            yesterday: scoresYesterday.length > 0 ?
-                DateTime.fromJSDate(scoresYesterday[scoresYesterday.length - 1].start).toLocal().hour - 1 :
-                0
-        }
-
         for (let key of Object.keys(standing)) {
             if (key !== 'user') {
+                const maxScore = standing[key].current;
+
                 for (let day of Object.keys(standing[key].hourly)) {
                     let curScore = 0;
+
                     for (let [i, s] of standing[key].hourly[day].entries()) {
-                        if (i >= fillUntil[day]) {
+                        if (s >= maxScore) {
                             break;
                         }
                         if (s > curScore) {
