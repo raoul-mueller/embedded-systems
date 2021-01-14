@@ -275,7 +275,10 @@ void onConnected(){
 
   bool standing = int(round((double)standingValue / (double)numberMeasurements)) == 1;
   
-  //TODO: eventuell, wenn standing = false, steps auf 0 setzen, um fehler zu minimieren?
+  ///if standing is false (so the System assumes person wasnt standing in the last x seconds) steps couldnt be made, so steps is set to 0
+  if(!standing){
+    steps = 0;
+  }
   
   bool outside = int(abs((heatindex / (double)numberMeasurements) - roomHeatindex)) > heatindexOffset;
 
