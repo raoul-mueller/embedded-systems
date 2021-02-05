@@ -48,11 +48,12 @@ class EventHandleService {
         const [device, user] = await this.handleDeviceEvent(event);
 
         const standings = await this.stadingsService.generateStandings();
-        //console.log(util.inspect(standings, false, null, true));
 
         // publish last score entry to ES/WS20/gruppe7/<device uuid>
-        const standing = await this.stadingsService.generateStandingForUser(user);
-        this.mqtt.publish(`${config.mqttChannelBase}/${event.boardID}`, JSON.stringify(standing));
+        if (user !== null) {
+            const standing = await this.stadingsService.generateStandingForUser(user);
+            this.mqtt.publish(`${config.mqttChannelBase}/${event.boardID}`, JSON.stringify(standing));
+        }
 
         this.wss.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
@@ -79,7 +80,7 @@ class EventHandleService {
 
         if (!user) {
             console.log(`User for device ${device._id} not found`);
-            return;
+            return [null, null];
         }
 
         let now = DateTime.utc();
