@@ -31,15 +31,28 @@
 
 
 ///Debug settings
-//#define DEBUG
-//#define DEBUG_WIFI
+#define DEBUG
+#define DEBUG_WIFI
 //#define DEBUG_SENSOR_VALUES
 
 
 
 
-#include <WiFiManager.h> /// https://github.com/tzapu/WiFiManager
+#include <WiFiManager.h> ///https://github.com/tzapu/WiFiManager
 WiFiManager wm;
+
+
+#include <PubSubClient.h> ///https://github.com/knolleary/pubsubclient
+WiFiClient espClient;
+PubSubClient client(espClient);
+const char* mqttServer = "hrw-fablab.de";
+const int mqttPort = 1883;
+const char* mqttUsername = "gruppe7";
+const char* mqttPassword = "eitaVkieXTqe8UNe";
+
+
+#include <ArduinoJson.h> ///https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
+StaticJsonDocument<1024> jsonDoc;
 
 
 /**
@@ -55,16 +68,21 @@ MPU6050 mpu;
 
 
 #include <DHT.h> ///https://github.com/adafruit/DHT-sensor-library
-DHT dht(27, DHT11);
-//DHT dht(27, DHT22);
+//DHT dht(27, DHT11);
+DHT dht(39, DHT22);
 
 
-#include <TFT_eSPI.h>  /// https://github.com/Bodmer/TFT_eSPI
-#include <SPI.h>
+#define FS_NO_GLOBALS
+#include <FS.h>
+#include "SPIFFS.h"
+#include <JPEGDecoder.h>
+#include <TFT_eSPI.h> /// https://github.com/Bodmer/TFT_eSPI
+
+TFT_eSPI tft = TFT_eSPI();
 
 
 
-const int updateDelay = 10; /// uploading values every 'X' seconds to Database
+const int updateDelay = 20; /// uploading values every 'X' seconds to Database
 const int readingsPerSecond = 4;
 
 const int trebbleStep = 6;
@@ -74,10 +92,10 @@ const int trebbleStanding = 10; /// in degree
 const int heatindexOffset = 5; ///in °C
 const double roomHeatindex = 22.0; //default room temperature
 
-//TODO: get Data from database (hours standed, steps made, hours outside for actual day)
-//long stepsDone = 0;
-//int hoursStanded = 0;
-//int hoursOutside = 0;
+int lastScore = 0;
+int lastTotalSteps = 0;
+double lastTotalStanding = 0;
+double lastTotalOutside = 0;
 
 
 /**
@@ -90,6 +108,7 @@ const double roomHeatindex = 22.0; //default room temperature
  */
 void setup() {
     Serial.begin(115200);
+    delay(1000);
 
 
     #ifdef DEBUG
@@ -104,8 +123,25 @@ void setup() {
       delay(500);
     }
 
+
+    #ifdef DEBUG
+    Serial.println("Initialize TFT-Display and drawing images...");
+    #endif
+    tft.setRotation(0);
+    tft.fillScreen(TFT_BLACK);
+    drawJpeg("/no_wifi.jpeg", 0 , 0);
+    drawJpeg("/battery.jpeg", 95, 0); ///prepared for later use
+
+    tft.drawLine(0, 45, 135, 45, TFT_WHITE);
+  
+    drawJpeg("/score.jpeg", 0, 65);
+    drawJpeg("/standing.jpeg", 0, 110);
+    drawJpeg("/outside.jpeg", 0, 155);
+    drawJpeg("/steps.jpeg", 0, 200);
+    
+
     #ifdef DEBUG_WIFI
-    Serial.println("Initialize WiFi-Manager");
+    Serial.println("Initialize WiFi-Manager...");
     Serial.println();
     #else
     wm.setDebugOutput(false);
@@ -116,6 +152,15 @@ void setup() {
     //wm.resetSettings();
     
     wm.setConfigPortalTimeout(30); ///turning down configuration site every X seconds to check if last known wifi is available again
+
+
+    #ifdef DEBUG_WIFI
+    Serial.println("Initialize MQTT-connection:");
+    Serial.println();
+    #endif
+    client.setServer(mqttServer, mqttPort);
+    client.setCallback(displayTFT);
+    
 
     onDisconnected();
 
@@ -142,7 +187,7 @@ void loop() {
   Serial.println("++++++++++ loop() ++++++++++");
   #endif
     
-  if(WiFi.status() == WL_CONNECTED){
+  if(WiFi.status() == WL_CONNECTED && client.connected()){
     onConnected();
   }else onDisconnected();
   delay(1000);
@@ -167,23 +212,81 @@ void onDisconnected(){
     #ifdef DEBUG_WIFI
     Serial.println("---- onDisconnected() ----");
     Serial.println();
-    Serial.println("Disconnected");
-    Serial.println();
-    Serial.println();
     #endif
+    
+    drawJpeg("/no_wifi.jpeg", 0 , 0);
   
     bool res = false;
     while(!res){
       res = wm.autoConnect(); 
+      bool mqqtSuccess = onReconnectMQTT();
+      if(!mqqtSuccess){
+        res = false;
+      }
 
       #ifdef DEGBUG_WIFI
       Serial.println();
       if(!res) {
-        Serial.println("Failed to connect");
-      } else Serial.println("connected...yeey :)");
+        Serial.println("Failed to connect. Trying again ...");
+      } else Serial.println("connected ...");
       Serial.println();
       #endif
     }
+    
+    drawJpeg("/wifi.jpeg", 0 , 0);
+
+
+    #ifdef DEBUG_WIFI
+    Serial.println();
+    Serial.println();
+    #endif
+}
+
+
+/**
+ * Trying to connect to to mqqt-Server while internet connection is available. If internet connection fails function quits.
+ * If connection is successfull topic ""ES/WS20/gruppe7/<<boardID>>" is subscribed 
+ * (daily values are stored here. After esp sends current data daily data is send back to this topic)
+ * 
+ * @return returns true if connection is successfull, otherwise returning false
+ */
+bool onReconnectMQTT(){
+  #ifdef DEGBUG_WIFI
+  Serial.println("---- onReconnectMQTT() ----");
+  Serial.println();
+  #endif
+  
+  while(!client.connected()){
+    #ifdef DEGBUG_WIFI
+    Serial.println("Trying to connect to mqtt server...");
+    #endif
+    
+    if(WiFi.status() != WL_CONNECTED){
+      #ifdef DEGBUG_WIFI
+      Serial.println("WiFi-connection failed. Quitting method and trying again ...");
+      #endif
+      
+      return false;
+    }else if(client.connect(wm.getDefaultAPName().c_str(), mqttUsername, mqttPassword)){
+      /// subscribing to channel named after the borardID (so each esp has its own channel)
+      //@gordon funktioniert (stand jetzt) nicht
+      String topic = "ES/WS20/gruppe7/" + wm.getDefaultAPName();
+
+      
+      //@gordon funktioniert
+      //String topic = "ES/WS20/gruppe7/events";
+      
+      client.subscribe(topic.c_str());
+
+      #ifdef DEGBUG_WIFI
+      Serial.print("MQTT-connection successfull. Subscirbing channel \" ");
+      Serial.print(topic);
+      Serial.println("\"");
+      #endif
+    }
+    delay(1000);
+  }
+  return true;
 }
 
 
@@ -228,6 +331,8 @@ void onConnected(){
   float heatindex = 0;
   
   for(int i=0; i<numberMeasurements; i++){
+     client.loop();
+     
     #ifdef DEBUG_SENSOR_VALUES
     Serial.println("______________________________");
     Serial.println();
@@ -276,7 +381,7 @@ void onConnected(){
   bool standing = int(round((double)standingValue / (double)numberMeasurements)) == 1;
   
   ///if standing is false (so the System assumes person wasnt standing in the last x seconds) steps couldnt be made, so steps is set to 0
-  if(!standing){
+  if(!standing || steps < 0){
     steps = 0;
   }
   
@@ -297,12 +402,9 @@ void onConnected(){
   Serial.println(outside);
   #endif
 
-
-  if(WiFi.status() == WL_CONNECTED){
-    #ifdef DEBUG_WIFI
-    Serial.println("Uploading data to database...");
-    #endif
-    //TODO: upload values to database and display on tft
+  
+  if(WiFi.status() == WL_CONNECTED && client.connected()){
+    uploadValues(steps, standing, outside);
   }else {
     #ifdef DEBUG_WIFI
     Serial.println("Connection could not been established. Upload to database failed!");
@@ -315,6 +417,110 @@ void onConnected(){
   #endif
 }
 
+/**
+ * Uploading values of last X seconds of measurement to Server (using mqtt).
+ * 
+ * First creating JSON Document. Example:
+ * { 
+ *    “boardID”: “xyz”, 
+ *    “standing”: true, 
+ *    “stepsSinceLastUpdate”: 5, 
+ *    “outside”: true 
+ * }
+ * 
+ * Then publishing it to MQTT Server (Topic is "ES/WS20/gruppe7/events")
+ */
+void uploadValues(int steps, bool standing, bool outside){
+  #ifdef DEBUG_WIFI
+  Serial.println("Uploading data to database...");
+  #endif
+
+  jsonDoc["boardID"] = wm.getDefaultAPName();
+  jsonDoc["standing"] = standing;
+  jsonDoc["stepsSinceLastUpdate"] = steps;
+  jsonDoc["outside"] = outside;
+
+  String output; 
+  serializeJsonPretty(jsonDoc, output);
+
+  #ifdef DEBUG_WIFI
+  Serial.println("JSON File:");
+  Serial.println("-------------------------------------------------------");
+  Serial.println(output);
+  Serial.println("-------------------------------------------------------");
+  #endif
+
+  client.publish("ES/WS20/gruppe7/events", output.c_str());
+  delay(100);
+
+  jsonDoc.clear();
+}
+
+
+/**
+ * This function is called if a message is passed to the topic subscribed (each board has its own channel named after boardID)
+ * First casting message (byte*) into an String to deserialize the Json-File.
+ * Then reading all relevant data (steps, standing, outside). NOTE: This data is from whole day
+ * If data changed after last reading, it is stored and displayed onto tft-screen
+ * 
+ * @param topic topic of subscribtion (mqtt)
+ * @param message message revcieved by subscribtion (mqtt)
+ * @param length length of message (not needed in this case: casting message to String)
+ */
+void displayTFT(char* topic, byte* message, unsigned int length) {
+  #ifdef DEBUG_WIFI
+  Serial.print("Message arrived on topic: ");
+  Serial.println(topic);
+  #endif
+  
+  String messageTemp(*message);
+  
+  /*for (int i = 0; i < length; i++) {
+    messageTemp += (char)message[i];
+  }*/
+  
+  #ifdef DEBUG_WIFI
+  Serial.println("Message: ");
+  Serial.println(messageTemp);
+  #endif
+
+  deserializeJson(jsonDoc, messageTemp);
+  int score = jsonDoc["score"]["current"];
+  int steps = jsonDoc["steps"]["current"];
+  double standing = jsonDoc["standing"]["current"];
+  double outside = jsonDoc["outside"]["current"];
+
+
+  #ifdef DEBUG
+  Serial.println("Displaying TFT...");
+  #endif
+
+  if(score != lastScore){
+    tft.setCursor(45, 75, 4);
+    tft.print(String(score));
+    lastScore = score;
+  }
+  if(standing != lastTotalStanding){
+    String output = String(standing) + " h";
+    tft.setCursor(45, 120, 4);
+    tft.print(output);
+    lastTotalStanding = standing;
+  }
+  
+  if(outside != lastTotalOutside){
+    String output = String(outside) + " h";
+    tft.setCursor(45, 165, 4);
+    tft.print(output);
+    lastTotalOutside = outside;
+  }
+  if(steps != lastTotalSteps){
+    tft.setCursor(45, 210, 4);
+    tft.print(String(steps));
+    lastTotalSteps = steps;
+  }
+
+  jsonDoc.clear();
+}
 
 
 
