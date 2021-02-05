@@ -63,13 +63,13 @@ class EventHandleService {
 
     async handleDeviceEvent(event) {
         //fetch device
-        const device = await deviceModel.findOne({
+        let device = await deviceModel.findOne({
             uuid: event.boardID
         }).exec();
 
         if (!device) {
-            console.log(`Device with board id ${event.boardID} not found`);
-            return;
+            device = await deviceModel.create({ uuid: event.boardID });
+            console.log(`Device with board id ${event.boardID} not found, created new device`);
         }
 
         //fetch user by device
