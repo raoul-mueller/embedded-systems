@@ -8,6 +8,18 @@ const route = Router();
 module.exports = (app) => {
     app.use('/devices', route);
 
+    route.get(
+      '/',
+      async (req, res, next) => {
+          try {
+              const devices = await deviceModel.find({}).exec();
+              return res.json({ devices });
+          } catch (e) {
+              next(e);
+          }
+      }
+    )
+
     route.post(
         '/',
         celebrate({
