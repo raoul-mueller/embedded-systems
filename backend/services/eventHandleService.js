@@ -51,7 +51,17 @@ class EventHandleService {
 
         // publish last score entry to ES/WS20/gruppe7/<device uuid>
         if (user !== null) {
-            const standing = await this.stadingsService.generateStandingForUser(user);
+            let standing = await this.stadingsService.generateStandingForUser(user);
+            delete standing['user'];
+            delete standing['score']['lastDay'];
+            delete standing['score']['hourly'];
+            delete standing['steps']['lastDay'];
+            delete standing['steps']['hourly'];
+            delete standing['standing']['lastDay'];
+            delete standing['standing']['hourly'];
+            delete standing['outside']['lastDay'];
+            delete standing['outside']['hourly'];
+
             this.mqtt.publish(`${config.mqttChannelBase}/${event.boardID}`, JSON.stringify(standing));
         }
 
