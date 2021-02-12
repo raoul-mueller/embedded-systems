@@ -33,7 +33,7 @@
 ///Debug settings
 #define DEBUG
 #define DEBUG_WIFI
-#define DEBUG_SENSOR_VALUES
+//#define DEBUG_SENSOR_VALUES
 
 
 
@@ -99,10 +99,10 @@ const int trebbleStanding = 10; /// in degree
 const int heatindexOffset = 5; ///in °C
 const double roomHeatindex = 22.0; //default room temperature
 
-int lastScore = 0;
-int lastTotalSteps = 0;
-double lastTotalStanding = 0;
-double lastTotalOutside = 0;
+int lastScore = -1;
+int lastTotalSteps = -1;
+double lastTotalStanding = -1;
+double lastTotalOutside = -1;
 
 
 /**
@@ -189,6 +189,8 @@ void setup() {
 
     onDisconnected();
 
+    uploadValues(0, false, false); //Uploading nothing to get data on tft display
+
     #ifdef DEBUG
     Serial.println();
     Serial.println();
@@ -250,7 +252,7 @@ void onDisconnected(){
         res = false;
       }
 
-      #ifdef DEGBUG_WIFI
+      #ifdef DEBUG_WIFI
       Serial.println();
       if(!res) {
         Serial.println("Failed to connect. Trying again ...");
@@ -278,18 +280,18 @@ void onDisconnected(){
  * @return returns true if connection is successfull, otherwise returning false
  */
 bool onReconnectMQTT(){
-  #ifdef DEGBUG_WIFI
+  #ifdef DEBUG_WIFI
   Serial.println("---- onReconnectMQTT() ----");
   Serial.println();
   #endif
   
   while(!client.connected()){
-    #ifdef DEGBUG_WIFI
+    #ifdef DEBUG_WIFI
     Serial.println("Trying to connect to mqtt server...");
     #endif
     
     if(WiFi.status() != WL_CONNECTED){
-      #ifdef DEGBUG_WIFI
+      #ifdef DEBUG_WIFI
       Serial.println("WiFi-connection failed. Quitting method and trying again ...");
       #endif
       
@@ -303,10 +305,14 @@ bool onReconnectMQTT(){
       //@gordon funktioniert
       //String topic = "ES/WS20/gruppe7/events";
       
-      client.subscribe(topic.c_str());
+      bool subscribed = client.subscribe(topic.c_str());
+      #ifdef DEBUG_WIFI
+      Serial.print("Subscribtion successfull: ");
+      Serial.println(subscribed);
+      #endif
 
-      #ifdef DEGBUG_WIFI
-      Serial.print("MQTT-connection successfull. Subscirbing channel \" ");
+      #ifdef DEBUG_WIFI
+      Serial.print("MQTT-connection successfull. Subscirbing channel \"");
       Serial.print(topic);
       Serial.println("\"");
       #endif
@@ -500,11 +506,11 @@ void displayTFT(char* topic, byte* message, unsigned int length) {
   Serial.println(topic);
   #endif
   
-  String messageTemp(*message);
+  String messageTemp;
   
-  /*for (int i = 0; i < length; i++) {
+  for (int i = 0; i < length; i++) {
     messageTemp += (char)message[i];
-  }*/
+  }
   
   #ifdef DEBUG_WIFI
   Serial.println("Message: ");
@@ -528,14 +534,40 @@ void displayTFT(char* topic, byte* message, unsigned int length) {
     lastScore = score;
   }
   if(standing != lastTotalStanding){
-    String output = String(standing) + " h";
+    int hoursStanding = round(standing);
+    int minStanding = hoursStanding % 60;
+    hoursStanding /= 60;
+    
+    String output = String(hoursStanding) + ":";
+    if(minStanding < 10){
+      output += "0";
+    }
+    output += String(minStanding);
+    if(minStanding >= 10 && minStanding % 10 == 0){
+      output += "0";
+    }
+    output += " h";
+    
     tft.setCursor(45, 120, 4);
     tft.print(output);
     lastTotalStanding = standing;
   }
   
   if(outside != lastTotalOutside){
-    String output = String(outside) + " h";
+    int hoursOutside = round(outside);
+    int minOutside = hoursOutside % 60;
+    hoursOutside /= 60;
+
+    String output = String(hoursOutside) + ":";
+    if(minOutside < 10){
+      output += "0";
+    }
+    output += String(minOutside);
+    if(minOutside >= 10 && minOutside % 10 == 0){
+      output += "0";
+    }
+    output += " h";
+    
     tft.setCursor(45, 165, 4);
     tft.print(output);
     lastTotalOutside = outside;
