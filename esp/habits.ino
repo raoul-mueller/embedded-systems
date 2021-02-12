@@ -33,7 +33,7 @@
 ///Debug settings
 #define DEBUG
 #define DEBUG_WIFI
-//#define DEBUG_SENSOR_VALUES
+#define DEBUG_SENSOR_VALUES
 
 
 
@@ -69,7 +69,7 @@ MPU6050 mpu;
 
 #include <DHT.h> ///https://github.com/adafruit/DHT-sensor-library
 //DHT dht(27, DHT11);
-DHT dht(39, DHT22);
+DHT dht(27, DHT22);
 
 
 #define FS_NO_GLOBALS
@@ -79,6 +79,13 @@ DHT dht(39, DHT22);
 #include <TFT_eSPI.h> /// https://github.com/Bodmer/TFT_eSPI
 
 TFT_eSPI tft = TFT_eSPI();
+
+
+#include <Tone32.h> ///https://github.com/lbernstone/Tone32
+const int buzzer_pin = 32;
+const int buzzer_channel = 0;
+
+
 
 
 
@@ -108,7 +115,8 @@ double lastTotalOutside = 0;
  */
 void setup() {
     Serial.begin(115200);
-    delay(1000);
+    startupSound();
+    delay(3000);
 
 
     #ifdef DEBUG
@@ -127,8 +135,22 @@ void setup() {
     #ifdef DEBUG
     Serial.println("Initialize TFT-Display and drawing images...");
     #endif
+    tft.begin();
     tft.setRotation(0);
     tft.fillScreen(TFT_BLACK);
+
+    if (!SPIFFS.begin()) {
+      #ifdef DEBUG
+      Serial.println("SPIFFS initialisation failed!");
+      #endif
+      while (1) yield(); // Stay here twiddling thumbs waiting  
+    }
+    Serial.println("\r\nInitialisation done.");
+    #ifdef DEBUG
+    listFiles(); // Lists the files so you can see what is in the SPIFFS
+    #endif
+
+    
     drawJpeg("/no_wifi.jpeg", 0 , 0);
     drawJpeg("/battery.jpeg", 95, 0); ///prepared for later use
 
@@ -138,6 +160,9 @@ void setup() {
     drawJpeg("/standing.jpeg", 0, 110);
     drawJpeg("/outside.jpeg", 0, 155);
     drawJpeg("/steps.jpeg", 0, 200);
+
+
+    dht.begin();
     
 
     #ifdef DEBUG_WIFI
@@ -215,6 +240,7 @@ void onDisconnected(){
     #endif
     
     drawJpeg("/no_wifi.jpeg", 0 , 0);
+    connectionLostSound();
   
     bool res = false;
     while(!res){
@@ -234,6 +260,7 @@ void onDisconnected(){
     }
     
     drawJpeg("/wifi.jpeg", 0 , 0);
+    connectionEstablishedSound();
 
 
     #ifdef DEBUG_WIFI
@@ -667,4 +694,67 @@ bool isStanding(Vector normAccel){
     #endif
  
     return false;
+}
+
+
+
+
+
+
+
+///Sounds
+
+
+/**
+ * Startupsound
+ * 
+ * 300 ms g4
+ * 75 ms a4
+ * 75 ms c5
+ * 75 ms e5
+ */
+void startupSound(){
+  tone(buzzer_pin, NOTE_G4, 300, buzzer_channel);
+  noTone(buzzer_pin, buzzer_channel);
+  tone(buzzer_pin, NOTE_A4, 75, buzzer_channel);
+  noTone(buzzer_pin, buzzer_channel);
+  tone(buzzer_pin, NOTE_C5, 75, buzzer_channel);
+  noTone(buzzer_pin, buzzer_channel);
+  tone(buzzer_pin, NOTE_E5, 75, buzzer_channel);
+  noTone(buzzer_pin, buzzer_channel);
+}
+
+
+/**
+ * Sound which is played when, connection to WiFi or to MQTT-Server is lost
+ * 
+ * 140 ms g4
+ * delay 10 ms
+ * 140 ms d4
+ * delay 10 ms
+ */
+void connectionLostSound(){
+  tone(buzzer_pin, NOTE_G4, 140, buzzer_channel);
+  noTone(buzzer_pin, buzzer_channel);
+  delay(10);
+  tone(buzzer_pin, NOTE_D4, 140, buzzer_channel);
+  noTone(buzzer_pin, buzzer_channel);
+  delay(10);
+}
+
+/**
+ * Sound which is played when, connection to WiFi and to MQTT-Server is established
+ * 
+ * 140 ms g4
+ * delay 10 ms
+ * 140 ms d5
+ * delay 10 ms
+ */
+void connectionEstablishedSound(){
+  tone(buzzer_pin, NOTE_G4, 140, buzzer_channel);
+  noTone(buzzer_pin, buzzer_channel);
+  delay(10);
+  tone(buzzer_pin, NOTE_D5, 140, buzzer_channel);
+  noTone(buzzer_pin, buzzer_channel);
+  delay(10);
 }
