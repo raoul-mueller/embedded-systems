@@ -32,8 +32,8 @@
 
 ///Debug settings
 #define DEBUG
-#define DEBUG_WIFI
-//#define DEBUG_SENSOR_VALUES
+//#define DEBUG_WIFI
+#define DEBUG_SENSOR_VALUES
 
 
 
@@ -92,12 +92,12 @@ const int buzzer_channel = 0;
 const int updateDelay = 20; /// uploading values every 'X' seconds to Database
 const int readingsPerSecond = 4;
 
-const int trebbleStep = 6;
+const int trebbleStep = 5; ///smaller number means more sensitive (in m/s^2)
 
 const int trebbleStanding = 10; /// in degree
 
-const int heatindexOffset = 5; ///in °C
-const double roomHeatindex = 22.0; //default room temperature
+const int heatindexOffset = 6; ///in °C
+const double roomHeatindex = 20.0; //default room temperature
 
 int lastScore = -1;
 int lastTotalSteps = -1;
@@ -401,7 +401,7 @@ void onConnected(){
     Serial.print(tempHeatindex);
     Serial.println("°C");
 
-    bool tempOutside = int(abs(heatindex - roomHeatindex)) > heatindexOffset;
+    bool tempOutside = (abs(tempHeatindex - roomHeatindex)) > heatindexOffset;
     if(tempOutside){
       Serial.println("Outside = true");
     }else Serial.println("Ouside = false");
@@ -418,7 +418,7 @@ void onConnected(){
     steps = 0;
   }
   
-  bool outside = int(abs((heatindex / (double)numberMeasurements) - roomHeatindex)) > heatindexOffset;
+  bool outside = (abs((heatindex / (double)numberMeasurements) - roomHeatindex)) > heatindexOffset;
 
   #ifdef DEBUG_SENSOR_VALUES
   Serial.println("______________________________");
