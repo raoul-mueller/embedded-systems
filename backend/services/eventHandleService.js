@@ -76,7 +76,7 @@ class EventHandleService {
         //fetch user by device
         const user = await userModel.findOne({
             device: device._id
-        }).exec();
+        }).populate('device').exec();
 
         if (!user) {
             console.log(`User for device ${device._id} not found`);

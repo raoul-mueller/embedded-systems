@@ -11,7 +11,7 @@ module.exports = (app) => {
     '/:uuid',
     async (req, res, next) => {
       try {
-        let user = await userModel.findOne({ uuid: req.params.uuid }).exec();
+        let user = await userModel.findOne({ uuid: req.params.uuid }).populate('device').exec();
         if (user === null) {
           let error = new Error('User not found');
           error.status = 404;
